@@ -78,22 +78,22 @@ async function getTransactionIntentFromOpenAI(
           description: intentData.data?.description || "",
           steps:
             intentData.extractedParams.transaction?.contractAddress ||
-            intentData.extractedParams.transaction?.entrypoint ||
-            intentData.extractedParams.transaction?.calldata
+              intentData.extractedParams.transaction?.entrypoint ||
+              intentData.extractedParams.transaction?.calldata
               ? [
-                  {
-                    contractAddress:
-                      intentData.extractedParams.transaction.contractAddress,
-                    entrypoint:
-                      intentData.extractedParams.transaction.entrypoint,
-                    calldata: [
-                      intentData.extractedParams.destinationAddress ||
-                        intentData.extractedParams.address,
-                      weiAmount.toString(),
-                      "0",
-                    ],
-                  },
-                ]
+                {
+                  contractAddress:
+                    intentData.extractedParams.transaction.contractAddress,
+                  entrypoint:
+                    intentData.extractedParams.transaction.entrypoint,
+                  calldata: [
+                    intentData.extractedParams.destinationAddress ||
+                    intentData.extractedParams.address,
+                    weiAmount.toString(),
+                    "0",
+                  ],
+                },
+              ]
               : [],
           fromToken: {
             symbol: intentData.extractedParams.token1 || "",

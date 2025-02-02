@@ -23,6 +23,14 @@ import {
 import Link from "next/link";
 import { TransactionSuccess } from "@/components/TransactionSuccess";
 import CommandList from "@/components/ui/command";
+import { useState } from "react";
+
+interface UserPreferences {
+  riskTolerance: 'low' | 'medium' | 'high';
+  preferredAssets: string[];
+  preferredChains: string[];
+  investmentHorizon: 'short' | 'medium' | 'long';
+}
 
 interface Message {
   role: string;
@@ -46,6 +54,18 @@ interface Message {
       solver?: string;
     };
     type: string;
+  };
+  recommendations?: {
+    pools: Array<{
+      name: string;
+      apy: number;
+      tvl: number;
+      riskLevel: string;
+      impermanentLoss: string;
+      chain: string;
+      protocol: string;
+    }>;
+    strategy: string;
   };
 }
 
@@ -107,11 +127,10 @@ const TransactionHandler: React.FC<TransactionHandlerProps> = ({
       <button
         onClick={executeTransaction}
         disabled={isProcessing}
-        className={`w-full py-2 px-4 rounded-lg ${
-          isProcessing
-            ? 'bg-white/20 cursor-not-allowed'
-            : 'bg-white/10 hover:bg-white/20'
-        } transition-colors duration-200`}
+        className={`w-full py-2 px-4 rounded-lg ${isProcessing
+          ? 'bg-white/20 cursor-not-allowed'
+          : 'bg-white/10 hover:bg-white/20'
+          } transition-colors duration-200`}
       >
         {isProcessing ? 'Processing Transaction...' : 'Execute Transaction'}
       </button>
@@ -119,9 +138,83 @@ const TransactionHandler: React.FC<TransactionHandlerProps> = ({
   );
 };
 
+const PreferencesDialog: React.FC<{
+  open: boolean;
+  onClose: () => void;
+  onSubmit: (preferences: UserPreferences) => void;
+}> = ({ open, onClose, onSubmit }) => {
+  const [preferences, setPreferences] = useState<UserPreferences>({
+    riskTolerance: 'medium',
+    preferredAssets: [],
+    preferredChains: [],
+    investmentHorizon: 'medium'
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="bg-gray-900 border border-white/20 text-white">
+        <DialogHeader>
+          <DialogTitle>Investment Preferences</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <label>Risk Tolerance</label>
+            <select
+              className="w-full bg-white/5 border border-white/20 rounded-md p-2"
+              value={preferences.riskTolerance}
+              onChange={(e) => setPreferences(prev => ({
+                ...prev,
+                riskTolerance: e.target.value as UserPreferences['riskTolerance']
+              }))}
+            >
+              <option value="low">Low Risk</option>
+              <option value="medium">Medium Risk</option>
+              <option value="high">High Risk</option>
+            </select>
+          </div>
+          {/* Add similar inputs for other preferences */}
+          <Button
+            onClick={() => onSubmit(preferences)}
+            className="w-full bg-white/10 hover:bg-white/20"
+          >
+            Save Preferences
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 const MessageContent: React.FC<MessageContentProps> = ({ message, onTransactionSuccess }) => {
   const [txHash, setTxHash] = React.useState<string | null>(null);
 
+  if (message.recommendations) {
+    return (
+      <div className="space-y-4">
+        <p className="text-white/80">{message.content}</p>
+        <div className="grid gap-4">
+          <h3 className="font-bold">Recommended Strategy:</h3>
+          <p>{message.recommendations.strategy}</p>
+          <h3 className="font-bold">Recommended Pools:</h3>
+          {message.recommendations.pools.map((pool, index) => (
+            <div key={index} className="bg-white/5 p-4 rounded-lg">
+              <div className="flex justify-between">
+                <span>Pool: {pool.name}</span>
+                <span>APY: {pool.apy}%</span>
+              </div>
+              <div className="flex justify-between">
+                <span>TVL: ${pool.tvl.toLocaleString()}</span>
+                <span>Risk: {pool.riskLevel}</span>
+              </div>
+              <div className="text-sm text-white/60">
+                IL Risk: {pool.impermanentLoss}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
   if (message.transaction?.data?.transactions) {
     return (
       <div className="space-y-4">
@@ -163,6 +256,13 @@ export default function TransactionPage() {
   const { address } = useAccount();
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const [isInputClicked, setIsInputClicked] = React.useState<boolean>(false);
+  const [showPreferences, setShowPreferences] = useState(false);
+  const [userPreferences, setUserPreferences] = useState<UserPreferences>({
+    riskTolerance: 'medium',
+    preferredAssets: [],
+    preferredChains: [],
+    investmentHorizon: 'medium'
+  });
 
   React.useEffect(() => {
     if (scrollRef.current) {
@@ -176,12 +276,12 @@ export default function TransactionPage() {
       id: uuidv4(),
       role: 'agent',
       content: 'Hello! I can help you with the following actions:\n\n' +
-              '• Swap tokens\n' +
-              '• Transfer tokens\n' +
-              '• Deposit to protocols\n' +
-              '• Withdraw from protocols\n' +
-              '• Bridge tokens\n\n' +
-              'What would you like to do?',
+        '• Swap tokens\n' +
+        '• Transfer tokens\n' +
+        '• Deposit to protocols\n' +
+        '• Withdraw from protocols\n' +
+        '• Bridge tokens\n\n' +
+        'What would you like to do?',
       timestamp: new Date().toLocaleTimeString(),
       user: 'Agent'
     }]);
@@ -206,7 +306,7 @@ export default function TransactionPage() {
     };
     setMessages(prev => [...prev, successMessage]);
   };
-  
+
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
     if (!address) {
@@ -221,7 +321,7 @@ export default function TransactionPage() {
       setMessages(prev => [...prev, errorMessage]);
       return;
     }
-  
+
     const userMessage: Message = {
       id: uuidv4(),
       role: 'user',
@@ -229,32 +329,30 @@ export default function TransactionPage() {
       timestamp: new Date().toLocaleTimeString(),
       user: 'User'
     };
-  
+
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
     setIsLoading(true);
-  
+
     try {
-      const response = await fetch('/api/transactions', {
+      const response = await fetch('/api/ask', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           prompt: inputValue,
-          address: address, // Always include the wallet address
-          chainId: '4012',
-          messages: messages.concat(userMessage).map(msg => ({
-            sender: msg.role === 'user' ? 'user' : 'brian',
-            content: msg.content,
-          })),
+          address: address,
+          messages: messages,
+          userPreferences,
+          stream: true
         }),
       });
-  
+
       const data = await response.json();
-      
+
       let agentMessage: Message;
-      
+
       // Check if it's an error message that's actually a prompt for more information
       if (data.error && typeof data.error === 'string' && !data.error.includes("not recognized")) {
         // This is a conversational prompt from Brian, not an error
@@ -452,7 +550,7 @@ export default function TransactionPage() {
             ))}
             <div ref={scrollRef} />
           </ScrollArea>
-          
+
           {isInputClicked && (
             <CommandList />
           )}
@@ -485,6 +583,21 @@ export default function TransactionPage() {
           </div>
         </div>
       </div>
+      <Button
+        onClick={() => setShowPreferences(true)}
+        className="absolute right-20 top-4"
+      >
+        Investment Preferences
+      </Button>
+
+      <PreferencesDialog
+        open={showPreferences}
+        onClose={() => setShowPreferences(false)}
+        onSubmit={(prefs) => {
+          setUserPreferences(prefs);
+          setShowPreferences(false);
+        }}
+      />
     </div>
   );
 }
