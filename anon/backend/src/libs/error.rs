@@ -1,5 +1,6 @@
 use axum::{http::StatusCode, response::{IntoResponse, Response}, Json};
 use serde::Serialize;
+use utoipa::ToSchema;
 
 #[derive(Debug)]
 pub enum ApiError {
@@ -8,17 +9,17 @@ pub enum ApiError {
     Internal(&'static str),
 }
 
-#[derive(Serialize)]
-struct ErrorBody<'a> {
-    error: &'a str,
+#[derive(Serialize, ToSchema)]
+pub struct ErrorBody {
+    pub error: String,
 }
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         match self {
-            ApiError::BadRequest(msg) => (StatusCode::BAD_REQUEST, Json(ErrorBody { error: msg })).into_response(),
-            ApiError::Conflict(msg) => (StatusCode::CONFLICT, Json(ErrorBody { error: msg })).into_response(),
-            ApiError::Internal(msg) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorBody { error: msg })).into_response(),
+            ApiError::BadRequest(msg) => (StatusCode::BAD_REQUEST, Json(ErrorBody { error: msg.to_string() })).into_response(),
+            ApiError::Conflict(msg) => (StatusCode::CONFLICT, Json(ErrorBody { error: msg.to_string() })).into_response(),
+            ApiError::Internal(msg) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorBody { error: msg.to_string() })).into_response(),
         }
     }
 }

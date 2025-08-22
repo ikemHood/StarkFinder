@@ -5,6 +5,7 @@ mod libs {
     pub mod db;
     pub mod error;
     pub mod wallet;
+    pub mod apispec;
 }
 mod middlewares {
     pub mod request_id;
@@ -20,6 +21,8 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 use tokio::net::TcpListener;
 use tower_http::{
     cors::{Any, CorsLayer},
@@ -52,7 +55,14 @@ async fn main() {
     let app = Router::new()
         .route("/", get(root_redirect))
         .route("/health", get(routes::health::health))
-        .route("/register", post(routes::register::register));
+        .route("/register", post(routes::register::register))
+        // Swagger UI at /docs and OpenAPI JSON at /api-docs/openapi.json
+        .merge(
+            SwaggerUi::new("/docs").url(
+                "/api-docs/openapi.json",
+                crate::libs::apispec::ApiDoc::openapi(),
+            ),
+        );
 
     // request-id layers before trace
     let app = middlewares::request_id::add_request_id(app)

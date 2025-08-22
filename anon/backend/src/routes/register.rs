@@ -1,20 +1,34 @@
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 use crate::libs::{db::AppState, error::ApiError, wallet};
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct RegisterReq {
     pub wallet: String,
     pub referral_code: Option<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct RegisterRes {
     pub user_id: i64,
     pub wallet: String,
 }
 
+/// Register a new user by Starknet wallet address
+#[utoipa::path(
+    post,
+    path = "/register",
+    tag = "auth",
+    request_body = RegisterReq,
+    responses(
+        (status = 201, description = "User registered", body = RegisterRes),
+        (status = 400, description = "Invalid request", body = crate::libs::error::ErrorBody),
+        (status = 409, description = "Wallet already registered", body = crate::libs::error::ErrorBody),
+        (status = 500, description = "Internal error", body = crate::libs::error::ErrorBody)
+    )
+)]
 pub async fn register(
     State(AppState { pool }): State<AppState>,
     Json(req): Json<RegisterReq>,
