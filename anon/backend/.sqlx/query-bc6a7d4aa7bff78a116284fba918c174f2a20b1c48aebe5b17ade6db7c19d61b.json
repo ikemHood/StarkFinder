@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO profiles (user_id, referral_code) VALUES ($1, $2) ON CONFLICT (user_id) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "bc6a7d4aa7bff78a116284fba918c174f2a20b1c48aebe5b17ade6db7c19d61b"
+}

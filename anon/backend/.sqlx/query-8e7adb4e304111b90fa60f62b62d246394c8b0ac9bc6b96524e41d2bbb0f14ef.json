@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO users (wallet) VALUES ($1)\n           ON CONFLICT (wallet) DO NOTHING\n           RETURNING id, wallet",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "wallet",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "8e7adb4e304111b90fa60f62b62d246394c8b0ac9bc6b96524e41d2bbb0f14ef"
+}

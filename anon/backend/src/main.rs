@@ -2,18 +2,22 @@
 mod libs {
     pub mod config;
     pub mod logging;
+    pub mod db;
+    pub mod error;
+    pub mod wallet;
 }
 mod middlewares {
     pub mod request_id;
 }
 mod routes {
     pub mod health;
+    pub mod register;
 }
 
 use axum::{
     http::{header::{CONTENT_TYPE, LOCATION}, Method, StatusCode},
     response::IntoResponse,
-    routing::get,
+    routing::{get, post},
     Router,
 };
 use tokio::net::TcpListener;
@@ -35,22 +39,28 @@ async fn main() {
 
     let cfg = libs::config::AppConfig::from_env();
 
+    // Database pool + migrations
+    let pool = libs::db::new_pool_from_env().await.expect("db pool");
+    libs::db::run_migrations(&pool).await.expect("migrations failed");
+
     let cors = CorsLayer::new()
         .allow_origin(Any)
-        .allow_methods([Method::GET])
+        .allow_methods([Method::GET, Method::POST])
         .allow_headers([CONTENT_TYPE]);
 
     // Router
     let app = Router::new()
         .route("/", get(root_redirect))
-        .route("/health", get(routes::health::health));
+        .route("/health", get(routes::health::health))
+        .route("/register", post(routes::register::register));
 
     // request-id layers before trace
     let app = middlewares::request_id::add_request_id(app)
         // trace requests (include headers so x-request-id is visible)
         .layer(TraceLayer::new_for_http().make_span_with(DefaultMakeSpan::new().include_headers(true)))
 
-        .layer(cors);
+        .layer(cors)
+        .with_state(libs::db::AppState { pool: pool.clone() });
 
     let addr = cfg.addr();
     let listener = TcpListener::bind(&addr).await.expect("bind failed");
