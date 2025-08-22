@@ -31,3 +31,6 @@ default.nix
 # StarkNet / Cairo tooling
 starknet-foundry/
 .qodo
+
+
+target/
