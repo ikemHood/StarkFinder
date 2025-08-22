@@ -1,4 +1,3 @@
-
 mod libs {
     pub mod config;
     pub mod logging;
@@ -6,16 +5,21 @@ mod libs {
     pub mod error;
     pub mod wallet;
     pub mod apispec;
+    pub mod jwt;
 }
+
 mod middlewares {
+    pub mod auth;
     pub mod request_id;
 }
+
 mod routes {
     pub mod register;
+    pub mod user;
 }
 
 use axum::{
-    http::{header::{CONTENT_TYPE, LOCATION}, Method, StatusCode},
+    http::{header::{CONTENT_TYPE, LOCATION, AUTHORIZATION}, Method, StatusCode},
     response::IntoResponse,
     routing::{get, post},
     Router,
@@ -47,13 +51,14 @@ async fn main() {
 
     let cors = CorsLayer::new()
         .allow_origin(Any)
-        .allow_methods([Method::GET, Method::POST])
-        .allow_headers([CONTENT_TYPE]);
+        .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+        .allow_headers([CONTENT_TYPE, AUTHORIZATION]);
 
     // Router
     let app = Router::new()
         // .route("/", get(root_redirect)) //TODO: re-introduce when `/health` is implemented
         .route("/register", post(routes::register::register))
+        .route("/user", get(routes::user::me))
         // Swagger UI at /docs and OpenAPI JSON at /api-docs/openapi.json
         .merge(
             SwaggerUi::new("/docs").url(
