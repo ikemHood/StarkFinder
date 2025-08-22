@@ -11,7 +11,6 @@ mod middlewares {
     pub mod request_id;
 }
 mod routes {
-    pub mod health;
     pub mod register;
 }
 
@@ -53,8 +52,7 @@ async fn main() {
 
     // Router
     let app = Router::new()
-        .route("/", get(root_redirect))
-        .route("/health", get(routes::health::health))
+        // .route("/", get(root_redirect)) //TODO: re-introduce when `/health` is implemented
         .route("/register", post(routes::register::register))
         // Swagger UI at /docs and OpenAPI JSON at /api-docs/openapi.json
         .merge(
