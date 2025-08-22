@@ -1,11 +1,11 @@
 mod libs {
+    pub mod apispec;
     pub mod config;
-    pub mod logging;
     pub mod db;
     pub mod error;
-    pub mod wallet;
-    pub mod apispec;
     pub mod jwt;
+    pub mod logging;
+    pub mod wallet;
 }
 
 mod middlewares {
@@ -19,18 +19,21 @@ mod routes {
 }
 
 use axum::{
-    http::{header::{CONTENT_TYPE, LOCATION, AUTHORIZATION}, Method, StatusCode},
+    Router,
+    http::{
+        Method, StatusCode,
+        header::{AUTHORIZATION, CONTENT_TYPE, LOCATION},
+    },
     response::IntoResponse,
     routing::{get, post},
-    Router,
 };
-use utoipa::OpenApi;
-use utoipa_swagger_ui::SwaggerUi;
 use tokio::net::TcpListener;
 use tower_http::{
     cors::{Any, CorsLayer},
-    trace::{TraceLayer, DefaultMakeSpan},
+    trace::{DefaultMakeSpan, TraceLayer},
 };
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
 async fn root_redirect() -> impl IntoResponse {
     (StatusCode::MOVED_PERMANENTLY, [(LOCATION, "/health")])
@@ -47,7 +50,9 @@ async fn main() {
 
     // Database pool + migrations
     let pool = libs::db::new_pool_from_env().await.expect("db pool");
-    libs::db::run_migrations(&pool).await.expect("migrations failed");
+    libs::db::run_migrations(&pool)
+        .await
+        .expect("migrations failed");
 
     let cors = CorsLayer::new()
         .allow_origin(Any)
@@ -60,18 +65,17 @@ async fn main() {
         .route("/register", post(routes::register::register))
         .route("/user", get(routes::user::me))
         // Swagger UI at /docs and OpenAPI JSON at /api-docs/openapi.json
-        .merge(
-            SwaggerUi::new("/docs").url(
-                "/api-docs/openapi.json",
-                crate::libs::apispec::ApiDoc::openapi(),
-            ),
-        );
+        .merge(SwaggerUi::new("/docs").url(
+            "/api-docs/openapi.json",
+            crate::libs::apispec::ApiDoc::openapi(),
+        ));
 
     // request-id layers before trace
     let app = middlewares::request_id::add_request_id(app)
         // trace requests (include headers so x-request-id is visible)
-        .layer(TraceLayer::new_for_http().make_span_with(DefaultMakeSpan::new().include_headers(true)))
-
+        .layer(
+            TraceLayer::new_for_http().make_span_with(DefaultMakeSpan::new().include_headers(true)),
+        )
         .layer(cors)
         .with_state(libs::db::AppState { pool: pool.clone() });
 

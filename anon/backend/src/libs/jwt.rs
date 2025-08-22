@@ -25,12 +25,17 @@ pub fn encode(wallet: &str, secret: &[u8]) -> Result<String, jsonwebtoken::error
         sub: wallet.to_string(),
         exp,
     };
-    jsonwebtoken::encode(&Header::new(Algorithm::HS256), &claims, &EncodingKey::from_secret(secret))
+    jsonwebtoken::encode(
+        &Header::new(Algorithm::HS256),
+        &claims,
+        &EncodingKey::from_secret(secret),
+    )
 }
 
 pub fn decode(token: &str, secret: &[u8]) -> Result<Claims, jsonwebtoken::errors::Error> {
     let mut validation = Validation::new(Algorithm::HS256);
     validation.validate_exp = true;
-    let data = jsonwebtoken::decode::<Claims>(token, &DecodingKey::from_secret(secret), &validation)?;
+    let data =
+        jsonwebtoken::decode::<Claims>(token, &DecodingKey::from_secret(secret), &validation)?;
     Ok(data.claims)
 }

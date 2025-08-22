@@ -1,6 +1,9 @@
-use axum::{extract::FromRequestParts, http::{request::Parts, header}};
+use axum::{
+    extract::FromRequestParts,
+    http::{header, request::Parts},
+};
 
-use crate::libs::{error::ApiError, wallet, jwt};
+use crate::libs::{error::ApiError, jwt, wallet};
 
 #[derive(Clone, Debug)]
 pub struct AuthUser {
@@ -18,7 +21,9 @@ where
             .headers
             .get(header::AUTHORIZATION)
             .ok_or(ApiError::Unauthorized("missing authorization"))?;
-        let raw = hdr.to_str().map_err(|_| ApiError::Unauthorized("invalid authorization"))?;
+        let raw = hdr
+            .to_str()
+            .map_err(|_| ApiError::Unauthorized("invalid authorization"))?;
         let token = raw
             .strip_prefix("Bearer ")
             .or_else(|| raw.strip_prefix("bearer "))
@@ -26,7 +31,8 @@ where
 
         // Decode JWT to get the wallet address
         let secret = jwt::secret_from_env();
-        let claims = jwt::decode(token, &secret).map_err(|_| ApiError::Unauthorized("invalid token"))?;
+        let claims =
+            jwt::decode(token, &secret).map_err(|_| ApiError::Unauthorized("invalid token"))?;
 
         // Normalize and validate the wallet from claims
         let wallet = wallet::normalize_and_validate(&claims.sub)

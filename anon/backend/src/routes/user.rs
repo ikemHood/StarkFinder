@@ -1,4 +1,4 @@
-use axum::{extract::State, Json};
+use axum::{Json, extract::State};
 use serde::Serialize;
 use utoipa::ToSchema;
 
@@ -50,9 +50,9 @@ pub async fn me(
 
     let rec = rec.ok_or(ApiError::NotFound("user not found"))?;
 
-    let profile = rec
-        .referral_code
-        .map(|referral_code| ProfilePublic { referral_code: Some(referral_code) });
+    let profile = rec.referral_code.map(|referral_code| ProfilePublic {
+        referral_code: Some(referral_code),
+    });
 
     Ok(Json(UserMeRes {
         id: rec.id,
